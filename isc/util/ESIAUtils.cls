@@ -105,6 +105,24 @@ ClassMethod createSSLConfig(sslConfig As %String = {##class(isc.esia.configurati
 	quit sc
 }
 
+/// Создать веб-приложение
+/// w $System.Status.GetErrorText(##class(isc.util.ESIAUtils).сreateWebApp())
+ClassMethod сreateWebApp(appName As %String = "/esia") As %Status
+{
+	set:$e(appName)'="/" appName = "/" _ appName
+	#dim sc As %Status = $$$OK
+	new $namespace
+	set namespace = $namespace
+	set $namespace = "%SYS"
+	
+	set props("AutheEnabled") = $$$AutheUnauthenticated
+	set props("NameSpace") = namespace
+	set props("IsNameSpaceDefault") = $$$NO
+	set props("DispatchClass") = "isc.esia.OAuthREST"
+	set sc = ##class(Security.Applications).Create(appName, .props)
+	quit sc
+}
+
 /// Удалить данные пакета isc.esia.data.
 /// do ##class(isc.util.ESIAUtils).purgeData()
 ClassMethod purgeData()
