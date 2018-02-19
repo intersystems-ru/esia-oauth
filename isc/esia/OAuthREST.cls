@@ -32,23 +32,17 @@ ClassMethod loginResponse(debug As %Boolean = {$$$YES})
 	
 	set code = %request.Get("code")
 	set state = %request.Get("state")
-	//set code = "eyJ2ZXIiOjEsInR5cCI6IkpXVCIsInNidCI6ImF1dGhvcml6YXRpb25fY29kZSIsImFsZyI6IlJTMjU2In0.eyJuYmYiOjE1MTg0MzQ3MjYsInNjb3BlIjoiZnVsbG5hbWU_b2lkPTEwMDAzMzA3OTkiLCJhdXRoX3RpbWUiOjE1MTg0MzQ3MjU4NzcsImlzcyI6Imh0dHA6XC9cL2VzaWEuZ29zdXNsdWdpLnJ1XC8iLCJ1cm46ZXNpYTpzaWQiOiIyNjhkYTEzYmFjYjM0MjM4MGRiY2FmYzE2NjdmMDQ3M2FmODY5NGNjY2MxNGViN2I2ZGQ4Yjg3MmEyNDkwOWY2IiwidXJuOmVzaWE6Y2xpZW50OnN0YXRlIjoiMDZmNzRkYzQtNWZiZC00ODljLWI1ZDYtZGU1NjQ5ZmZiODg1IiwiYXV0aF9tdGhkIjoiUFdEIiwidXJuOmVzaWE6c2JqIjp7InVybjplc2lhOnNiajp0eXAiOiJQIiwidXJuOmVzaWE6c2JqOm9pZCI6MTAwMDMzMDc5OSwidXJuOmVzaWE6c2JqOm5hbSI6Ik9JRC4xMDAwMzMwNzk5IiwidXJuOmVzaWE6c2JqOmVpZCI6NzQ0NTQyMX0sImV4cCI6MTUxOTk1MzIyMTE2MiwicGFyYW1zIjp7fSwiaWF0IjoxNTE4NDM0NzI2LCJjbGllbnRfaWQiOiIxMjI3MDEifQ.JdgYTNtgyplAIG3URTxdMIqr0mXdsok9okxTHVfDRq28_7FSiytZV-KDixxH99c_EWx0HOsRCOlcBwD32oL9ou1bQadWGyga9lsRt1A78aAV4W7ewnL7a_uQDBVZROzx6R-PPfdqWuwcR0vCjCUSEqqCUh97WauV3N3PyI1RJLbaup2cqKsYhPcB1o4iqwVyCmvCTkZOKsFI6DFrRbVyXFEH1Xuo5QB2_EJkcoA7RHhTa9KbJy4K1Z2T0wdwO0l2ddg13sXq-kdXzJk9BpW9EsAnyB6zv2uCDHUd8MSo7JbjEcxVby165Xaj3ZDoAh_CdrqjNhCgFdFiKjogJGY0gw"
 
 	set header = ..base64URLDecode($p(code, "."))
 	set payload = ..base64URLDecode($p(code, ".", 2))
 	set signature = ..base64URLDecode($p(code, ".", 3))
 	
+	set verifier = ##class(isc.esia.Settings).getSetting("signer")
+	
+	set sc = $classmethod(verifier, "verify", $piece(code, ".", 1, 2), signature)
+	quit:$$$ISERR(sc) sc
+	
 	set config = ##class(isc.esia.Settings).getSetting("config")
-	
-	/*do ##class(isc.util.ESIAUtils).createFile("C:\InterSystems\Cache\mgr\Temp\resp.txt", , $p(code, ".", 1, 2))
-	do ##class(isc.util.ESIAUtils).createFile("C:\InterSystems\Cache\mgr\Temp\sig.txt", , signature)
-	zzdump signature
-	w !,!,!
-	zzdump $e($p(code, ".", 1, 2),1,100)
-	w !,!
-	write:debug "Auth response:",!,!
-	zw:debug header, payload ///, signature*/
-	
 	set sc = $classmethod(config, "sendTokenRequest", code, .tokenResponse)
 	quit:$$$ISERR(sc) sc
 	
@@ -90,7 +84,7 @@ ClassMethod loginResponse(debug As %Boolean = {$$$YES})
 
 	set sc = person.%Save()
 	
-	set redirect = $parameter(##class(isc.esia.Settings).getSetting("config"), "MAINPAGE")
+	set redirect = $parameter(config, "MAINPAGE")
 	if debug {
 		write !, "Reditect: ", redirect,!
 	} else {
