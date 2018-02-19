@@ -14,15 +14,21 @@ Parameter MAINPAGE;
 /// Идентификатор системы-клиента (мнемоника системы в ЕСИА)
 Parameter CLIENTID;
 
+/// (Опционально) Идентификатор организации для которой запрашивается информация
+Parameter ORGANIZATIONID;
+
 /// Сервер ЕСИА
 Parameter SERVER;
 
-/// Область доступа, т.е. запрашиваемые права; например, если система-клиент
-/// запрашивает доступ к сведениям о сотрудниках организации, то scope должна иметь
-/// значение http://esia.gosuslugi.ru/org_emps (с необходимыми параметрами); если
-/// запрашивается scope id_doc61 (данные о пользователе), то не нужно в качестве параметра
-/// указывать oid этого пользователя.
+/// Область доступа, т.е. запрашиваемые права. Здесь перечисляются права на ФЛ через пробел
 Parameter SCOPE;
+
+/// Если система-клиент запрашивает доступ к сведениям о сотрудниках организации, то SCOPEORG должна иметь
+/// значение $lb("org_emps")
+/// Метод getScope формирует scope на основе параметров: SCOPE, SCOPEORG, ORGANIZATIONID
+/// Пример формирования: https://toster.ru/q/444071
+/// Пример: http://esia.gosuslugi.ru/org_shortname?org_oid=1000298922 http://esia.gosuslugi.ru/org_fullname?org_oid=1000298922
+Parameter SCOPEORG As LIST;
 
 /// *** ПАРАМЕТРЫ ОДИНАКОВЫЕ ДЛЯ БОЛЬШИНСТВА КОНФИГУРАЦИЙ ***
 /// 
@@ -64,7 +70,7 @@ ClassMethod getLoginURL() As %String
 {
 	set params("client_id") = ..#CLIENTID
 	set params("redirect_uri") = ..getLoginRedirectURL()
-	set params("scope") = ..#SCOPE
+	set params("scope") = ..getScope()
 	set params("response_type") = ..#RESPONSETYPE
 	set params("state") = ..getState()
 	set params("timestamp") = ..getTimestamp()
@@ -151,6 +157,21 @@ ClassMethod getState() As %String
 	quit $zcvt($System.Util.CreateGUID(), "l")
 }
 
+/// Формирует scope на основе параметров: SCOPE, SCOPEORG, ORGANIZATIONID
+ClassMethod getScope() As %String
+{
+	set scope = ..#SCOPE
+	set scopeOrg = ..#SCOPEORG
+	if ((..#ORGANIZATIONID '= "") && (scopeOrg '= "") && ($listValid(scopeOrg))) {
+		for i=1:1:$ll(scopeOrg) {
+			set oneScopeOrg = $lg(scopeOrg, i)
+			set scope = scope _ " http://esia.gosuslugi.ru/" _ oneScopeOrg _ "?org_oid=" _ ..#ORGANIZATIONID
+		}
+	}
+	zw scope
+	quit scope
+}
+
 /// Время запроса авторизационного кода в формате yyyy.MM.dd HH:mm:ss Z
 /// (например, 2013.01.25 14:36:11 +0400), необходимое для фиксации начала временного
 /// промежутка, в течение которого будет валиден запрос с данным идентификатом
@@ -174,10 +195,10 @@ ClassMethod sendTokenRequest(code As %String, Output response) As %Status
 	do req.InsertFormData("client_id", ..#CLIENTID)
 	do req.InsertFormData("code", code)
 	do req.InsertFormData("grant_type", ..#GRANTTYPE)
-	do req.InsertFormData("client_secret",  ..getSecret(..#SCOPE, timestamp, ..#CLIENTID, state))
+	do req.InsertFormData("client_secret",  ..getSecret(..getScope(), timestamp, ..#CLIENTID, state))
 	do req.InsertFormData("state", state)
 	do req.InsertFormData("redirect_uri", ..getLoginRedirectURL())
-	do req.InsertFormData("scope", ..#SCOPE)
+	do req.InsertFormData("scope", ..getScope())
 	do req.InsertFormData("timestamp", timestamp)
 	do req.InsertFormData("token_type", ..#TOKENTYPE)
 	
@@ -200,10 +221,10 @@ ClassMethod sendRefreshRequest(tokenObj As isc.esia.data.Token) As %Status
 	do req.InsertFormData("client_id", ..#CLIENTID)
 	do req.InsertFormData("refresh_token", tokenObj.refreshToken)
 	do req.InsertFormData("grant_type", ..#GRANTTYPEREFRESH)
-	do req.InsertFormData("client_secret",  ..getSecret(..#SCOPE, timestamp, ..#CLIENTID, state))
+	do req.InsertFormData("client_secret",  ..getSecret(..getScope(), timestamp, ..#CLIENTID, state))
 	do req.InsertFormData("state", state)
 	do req.InsertFormData("redirect_uri", ..getLoginURL())
-	do req.InsertFormData("scope", ..#SCOPE)
+	do req.InsertFormData("scope", ..getScope())
 	do req.InsertFormData("timestamp", timestamp)
 	do req.InsertFormData("token_type", ..#TOKENTYPE)
 	
@@ -219,7 +240,18 @@ ClassMethod sendRefreshRequest(tokenObj As isc.esia.data.Token) As %Status
 ClassMethod sendDataRequest(token As %String, oid As %String, Output response) As %Status
 {
 	#dim sc As %Status = $$$OK
-	set sc = ..sendRequest("GET", "/rs/prns/" _ oid _ "?embed=(organizations,contacts.elements)", .response, token)
+	set sc = ..sendRequest("GET", "/rs/prns/" _ oid _ "?embed=(organizations.elements,contacts.elements,grps.elements)", .response, token)
+	quit sc
+}
+
+/// Отправить запрос на получение базовых данных из ЕСИА
+/// do ##class(isc.esia.configuration.Test).sendGroupsRequest()
+ClassMethod sendGroupsRequest(token As %String, orgId As %String, oid As %String, Output response) As %Status
+{
+	#dim sc As %Status = $$$OK
+	set response = "Nope"
+	//set sc = ..sendRequest("GET", "/rs/orgs/" _ orgId _ "/grps", .response, token)
+	//set sc = ..sendRequest("GET", "/rs/orgs/" _ orgId _ "/emps/"_ oid _ "/grps", .response, token)
 	quit sc
 }
 
@@ -228,7 +260,7 @@ ClassMethod sendDataRequest(token As %String, oid As %String, Output response) A
 ClassMethod getRequest(token As %String = "") As %Net.HttpRequest
 {
 	set req = ##class(%Net.HttpRequest).%New()
-	set req.SSLConfiguration = "GitHub"
+	set req.SSLConfiguration = ..#SSLCONFIG
 	set req.Server = ..#SERVER
 	set req.Https = $$$YES
 	set:token'="" req.Authorization =  "Bearer " _ token

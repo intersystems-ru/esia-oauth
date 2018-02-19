@@ -84,9 +84,15 @@ ClassMethod loginResponse(debug As %Boolean = {$$$YES})
 
 	set sc = person.%Save()
 	
+	set orgId = $piece(person.organizations.GetAt(1), "/", *)
+	zw:debug orgId
+	
+	set sc = $classmethod(config, "sendGroupsRequest", tokenObj.accessToken, orgId, oid, .groups)
+	zw:debug groups
+	
 	set redirect = $parameter(config, "MAINPAGE")
 	if debug {
-		write !, "Reditect: ", redirect,!
+		write !, "Redirect: ", redirect,!
 	} else {
 		set %response.Redirect = redirect
 	}
