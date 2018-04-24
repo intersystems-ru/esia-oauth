@@ -54,9 +54,7 @@ ClassMethod loginResponse(debug As %Boolean = {$$$YES})
 	
 	#dim tokenObj As isc.esia.data.Token
 	set tokenObj = ##class(isc.esia.data.Token).fromJSON(tokenResponse)
-	
-	zw:debug oid,tokenObj
-	
+		
 	set sc = $classmethod(config, "sendDataRequest", tokenObj.accessToken, oid, .data)
 	quit:$$$ISERR(sc) sc
 	
@@ -73,30 +71,45 @@ ClassMethod loginResponse(debug As %Boolean = {$$$YES})
 	}
 	set person.token = tokenObj
 
-	zw:debug data, person
+	zw:debug data
 	
-	set key = ""
-	while 1 {
-		set contact = person.contacts.GetNext(.key)
-		quit:key=""
-		zw:debug contact
-	} 
-
 	set sc = person.%Save()
+	if $$$ISERR(sc) {
+		zw:debug person
+		write:debug $System.Status.GetErrorText(sc)
+		quit sc
+	}
 	
-	set orgId = $piece(person.organizations.GetAt(1), "/", *)
+	set orgId = person.organizations.GetAt(1)
 	zw:debug orgId
-	
+
 	set sc = $classmethod(config, "sendGroupsRequest", tokenObj.accessToken, orgId, oid, .groups)
-	zw:debug groups
+	do person.setGroups({}.%FromJSON(groups))
+	zw:debug person
 	
+	do person.setSession()
+	
+	// авторизация
+    if '..isAuthorized()
+    {
+	    kill %session.Data
+    	quit ..initialLogout()
+    }
+
 	set redirect = $parameter(config, "MAINPAGE")
 	if debug {
 		write !, "Redirect: ", redirect,!
 	} else {
 		set %response.Redirect = redirect
 	}
+	
 	quit sc
+}
+
+/// Специфические проверки данных в %session.Data + принятие решения об авторизации
+ClassMethod isAuthorized() As %Boolean
+{
+	quit $$$YES
 }
 
 /// Первоначальная точка входа для выхода пользователя через ЕСИА

@@ -27,7 +27,7 @@ Property middleName As %String;
 Property birthDate As %Date;
 
 /// Место рождения пользователя;
-Property birthPlace As %String;
+Property birthPlace As %String(MAXLEN = "");
 
 /// Пол
 Property gender As %String;
@@ -62,6 +62,9 @@ Property contacts As array Of isc.esia.data.Contact(SQLPROJECTION = "table/colum
 /// данные о каждой организации)
 Property organizations As list Of %String(MAXLEN = "", SQLPROJECTION = "table/column", STORAGEDEFAULT = "array");
 
+/// Список групп пользователя
+Property groups As list Of %String;
+
 Method onBeforeFromJSON(jsonObj As %DynamicObject) As %Boolean
 {
 	// TODO
@@ -74,7 +77,7 @@ Method onBeforeFromJSON(jsonObj As %DynamicObject) As %Boolean
 
 Method onFromJSON(jsonObj As %DynamicObject)
 {
-	set ..birthDate = $zdh(..birthDate, 4)
+	set ..birthDate = $zdh($tr(..birthDate,".","/"), 4,,,,,,,, 1)
 	set ..updatedOn = $zdt($zdth(..updatedOn, -2), 3, 1)
 	
 	if jsonObj.%IsDefined("contacts") {
@@ -98,8 +101,44 @@ Method onFromJSON(jsonObj As %DynamicObject)
 		set iterator = jsonObj.organizations.elements.%GetIterator()
 		do ..organizations.Clear() // TODO compare
 		while iterator.%GetNext(.key, .value) {
-			do ..organizations.Insert(value)
+			do ..organizations.Insert(value.oid)
 		}
+	}
+}
+
+Method setGroups(jsonObj As %DynamicObject)
+{
+	if jsonObj.%IsDefined("elements") {
+		/// TODO clear?
+		set iterator = jsonObj.elements.%GetIterator()
+		while iterator.%GetNext(.key, .value) {
+			do ..groups.Insert($piece(value,"grps/",*))
+	}
+}
+}
+
+Method setSession()
+{
+	if $isObject($g(%session)) { 
+		///set %session.Data("SessionIndex") = obj.SessionIndex
+		set %session.Data("NameID") = ..oid
+        set %session.Data("lastName") = ..lastName
+        set %session.Data("firstName") = ..firstName
+        set %session.Data("middleName") = ..middleName
+        set %session.Data("birthDate") = ..birthDate
+        set %session.Data("snils") = ..snils
+        
+        #dim email As Contact = ..contacts.GetAt("EML")        
+        set:$isObject(email) %session.Data("email") = email.value
+
+		set groupList = ""
+		for i=1:1:..groups.Count() {
+			set groupList = groupList _ $lb(..groups.GetAt(i))
+		} 
+		// TODO
+        //set %session.Data("ogrn") = ..
+        set %session.Data("groups") = $lts(groupList)
+        set %session.Data("fullName") = %session.Data("lastName") _ " " _ %session.Data("firstName") _ " " _ %session.Data("middleName")
 	}
 }
 
@@ -156,6 +195,9 @@ Storage Default
 </Value>
 <Value name="17">
 <Value>status</Value>
+</Value>
+<Value name="18">
+<Value>groups</Value>
 </Value>
 </Data>
 <Data name="contacts">
