@@ -168,7 +168,6 @@ ClassMethod getScope() As %String
 			set scope = scope _ " http://esia.gosuslugi.ru/" _ oneScopeOrg _ "?org_oid=" _ ..#ORGANIZATIONID
 		}
 	}
-	zw scope
 	quit scope
 }
 
@@ -249,9 +248,9 @@ ClassMethod sendDataRequest(token As %String, oid As %String, Output response) A
 ClassMethod sendGroupsRequest(token As %String, orgId As %String, oid As %String, Output response) As %Status
 {
 	#dim sc As %Status = $$$OK
-	set response = "Nope"
+	//set response = "Nope"
 	//set sc = ..sendRequest("GET", "/rs/orgs/" _ orgId _ "/grps", .response, token)
-	//set sc = ..sendRequest("GET", "/rs/orgs/" _ orgId _ "/emps/"_ oid _ "/grps", .response, token)
+	set sc = ..sendRequest("GET", "/rs/orgs/" _ orgId _ "/emps/"_ oid _ "/grps", .response, token)
 	quit sc
 }
 

@@ -64,6 +64,8 @@ Property organizations As list Of %String(MAXLEN = "", SQLPROJECTION = "table/co
 
 Method onBeforeFromJSON(jsonObj As %DynamicObject) As %Boolean
 {
+	// TODO
+	quit $$$YES
 	set newUpdatenOn = $zdt($zdth(jsonObj.updatedOn, -2), 3, 1)
 	quit:newUpdatenOn=..updatedOn $$$NO
 	quit:$system.SQL.DATEDIFF("s", ..updatedOn, newUpdatenOn)<0 $$$NO

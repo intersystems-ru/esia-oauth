@@ -22,7 +22,7 @@ ClassMethod base64URLEncode(text) As %String
 /// Если name - расширение, то возвращается имя созданного файла (в папке Temp) с заданным расширением.
 /// stream - стрим файла
 /// content - строка или stream который записывается в файл
-ClassMethod createFile(ByRef name As %String = "", Output stream As %Stream.FileBinary, content As %String) As %String
+ClassMethod createFile(ByRef name As %String = "", Output stream As %Stream.FileBinary, content As %String) As %Status
 {
 	#dim sc As %Status = $$$OK
 	
