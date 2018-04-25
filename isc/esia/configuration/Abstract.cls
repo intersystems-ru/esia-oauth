@@ -285,7 +285,10 @@ ClassMethod sendRequest(method As %String(VALUELIST="GET,POST"), location As %St
 			set response = request.HttpResponse.Data.Read($$$MaxStringLength)
 			set response = $zcvt(response, "I", "UTF8")
 		} else {
-			set sc = $$$ADDSC(sc, $$$ERROR($$$GeneralError, $$$FormatText("При выполнении запроса '%1' получили статус %2. Тело ответа: %3", location, request.HttpResponse.StatusCode, request.HttpResponse.Data.Read($$$MaxStringLength))))
+			if $isObject($g(request.HttpResponse.Data)) {
+				set response = request.HttpResponse.Data.Read($$$MaxStringLength)
+			}
+			set sc = $$$ADDSC(sc, $$$ERROR($$$GeneralError, $$$FormatText("При выполнении запроса '%1' получили статус %2. Тело ответа: %3", location, request.HttpResponse.StatusCode, response)))
 		}
 	}
 	quit sc
