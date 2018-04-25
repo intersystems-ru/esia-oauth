@@ -8,9 +8,11 @@ Parameter NAME = "GOST OpenSSL";
 /// zw ##class(isc.esia.signer.OpenSSL).sign("13", .out)
 ClassMethod sign(text As %String, Output out As %String) As %Status
 {
-	set textFile = ..#DIR _ "OpenSSLdata.txt"
-	set sc = ..createFile(textFile,,text)
-	set outFile = ..#DIR _ "OpenSSL.sig"
+	set sc = ..createFile(.textFile,,text)
+	set outFile = ##class(%File).TempFilename()
+	//set textFile = ..#DIR _ "OpenSSLdata.txt"
+	//set sc = ..createFile(textFile,,text)
+	//set outFile = ..#DIR _ "OpenSSL.sig"
 	 						// out32\openssl cms -sign -inkey private2.key -in file.txt -signer Pashinova2019.pem -engine gost -out test.sign -outform DER -noattr -binary
 	set cmd = $$$FormatText("%1 cms -sign -in %2 -signer %3 -engine gost -inkey %4 -out %5 -outform DER -noattr -binary", ..getOpenSSL(), textFile, ..getCertificate(), ..getKey(), outFile)
 	
